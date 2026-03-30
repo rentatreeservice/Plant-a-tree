@@ -1,0 +1,121 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user account information and financial balances.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "balance": { "type": "number", "description": "Current available balance for withdrawal or investment" },
+        "totalInvested": { "type": "number" },
+        "totalReturns": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "balance"]
+    },
+    "TreePackage": {
+      "title": "Tree Package",
+      "description": "Investment plans available for users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "investmentAmount": { "type": "number" },
+        "durationDays": { "type": "number" },
+        "totalReturn": { "type": "number" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "badge": { "type": "string" },
+        "tagline": { "type": "string" }
+      },
+      "required": ["id", "name", "investmentAmount", "durationDays", "totalReturn"]
+    },
+    "Investment": {
+      "title": "Investment",
+      "description": "A user's active or completed investment in a tree package.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "packageId": { "type": "string" },
+        "packageName": { "type": "string" },
+        "amount": { "type": "number" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "completed"] },
+        "expectedReturn": { "type": "number" },
+        "dailyReturn": { "type": "number" }
+      },
+      "required": ["id", "userId", "packageId", "amount", "startDate", "endDate", "status"]
+    },
+    "ImpactStats": {
+      "title": "Impact Stats",
+      "description": "Global statistics for the platform.",
+      "type": "object",
+      "properties": {
+        "treesPlanted": { "type": "number" },
+        "activeInvestors": { "type": "number" },
+        "totalInvested": { "type": "number" },
+        "returnsPaid": { "type": "number" }
+      }
+    },
+    "ContactMessage": {
+      "title": "Contact Message",
+      "description": "Messages sent from the contact form.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction (deposit, withdrawal, investment).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string", "format": "email" },
+        "userName": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal", "investment", "refund", "return"] },
+        "description": { "type": "string" },
+        "utrNumber": { "type": "string", "description": "UPI Transaction ID / UTR Number" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["success", "pending", "failed"] }
+      },
+      "required": ["userId", "amount", "type", "date", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "/packages/{packageId}": {
+      "schema": "TreePackage",
+      "description": "Available tree packages"
+    },
+    "/investments/{investmentId}": {
+      "schema": "Investment",
+      "description": "User investments"
+    },
+    "/stats/global": {
+      "schema": "ImpactStats",
+      "description": "Global platform statistics"
+    },
+    "/messages/{messageId}": {
+      "schema": "ContactMessage",
+      "description": "Contact form submissions"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User transaction history"
+    }
+  }
+}

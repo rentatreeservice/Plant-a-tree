@@ -1,0 +1,33 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "admin",
+      "email": "jainaman.aj79@gmail.com",
+      "phone": "1234567890",
+      "password": "password123",
+      "balance": 1000,
+      "totalInvestment": 0,
+      "totalReturns": 0,
+      "referralCode": "ADMIN123",
+      "referredBy": "",
+      "role": "admin"
+    },
+    {
+      "id": "2",
+      "username": "testuser",
+      "email": "test@example.com",
+      "phone": "0987654321",
+      "password": "password123",
+      "balance": 500,
+      "totalInvestment": 0,
+      "totalReturns": 0,
+      "referralCode": "TEST456",
+      "referredBy": "ADMIN123",
+      "role": "user"
+    }
+  ],
+  "rentals": [],
+  "transactions": [],
+  "messages": []
+}

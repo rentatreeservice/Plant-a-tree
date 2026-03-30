@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #2E8B57;
+  --primary-dark: #1f6b43;
+  --primary-light: #3CB371;
+  --secondary: #FFD700;
+  --accent: #CD853F;
+  --dark: #2D3748;
+  --light: #F7FAFC;
+  --white: #FFFFFF;
+  --gray: #718096;
+}
+
+body {
+  @apply font-sans text-slate-900 bg-slate-50;
+}
+
+.btn-primary {
+  @apply bg-green-600 text-white font-bold py-3 px-6 rounded-2xl hover:bg-green-700 transition-all shadow-lg shadow-green-200;
+}
+
+.btn-outline {
+  @apply border-2 border-green-600 text-green-600 font-bold py-3 px-6 rounded-2xl hover:bg-green-50 transition-all;
+}

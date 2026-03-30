@@ -1,0 +1,153 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: uid
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string
+    //   - role: string (admin/user)
+    //   - balance: number
+    //   - totalInvested: number
+    //   - totalReturns: number
+    //   - createdAt: string (ISO 8601)
+    //
+    // Collection: packages
+    // Document ID: packageId
+    // Fields:
+    //   - id: string
+    //   - name: string
+    //   - investmentAmount: number
+    //   - durationDays: number
+    //   - totalReturn: number
+    //   - imageUrl: string
+    //   - tagline: string
+    //   - badge: string
+    //
+    // Collection: investments
+    // Document ID: investmentId
+    // Fields:
+    //   - userId: string
+    //   - packageId: string
+    //   - amount: number
+    //   - status: string (active/completed)
+    //   - expectedReturn: number
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email.lower() == "rentatreeservice@gmail.com" ||
+         request.auth.token.email.lower() == "jainaman.aj79@gmail.com" ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidUser(data) {
+      return data.uid is string &&
+             data.email is string &&
+             data.role in ['admin', 'user'];
+    }
+
+    function isValidPackage(data) {
+      return data.keys().hasAll(['id', 'name', 'investmentAmount', 'durationDays', 'totalReturn', 'imageUrl', 'tagline']) &&
+             data.name is string &&
+             data.investmentAmount is number &&
+             data.durationDays is number &&
+             data.totalReturn is number &&
+             data.imageUrl is string &&
+             data.tagline is string;
+    }
+
+    function isValidInvestment(data) {
+      return data.keys().hasAll(['userId', 'packageId', 'packageName', 'amount', 'startDate', 'endDate', 'status', 'expectedReturn', 'dailyReturn']) &&
+             data.userId == request.auth.uid &&
+             data.amount is number &&
+             data.status in ['active', 'completed'] &&
+             isValidDateString(data.startDate) &&
+             isValidDateString(data.endDate);
+    }
+
+    function isValidTransaction(data) {
+      return hasOnlyAllowedFields(['userId', 'userEmail', 'userName', 'amount', 'type', 'description', 'utrNumber', 'date', 'status']) &&
+             data.userId == request.auth.uid &&
+             data.amount is number && data.amount > 0 &&
+             data.type in ['deposit', 'withdrawal', 'investment', 'refund', 'return'] &&
+             data.status in ['success', 'pending', 'failed'] &&
+             isValidDateString(data.date);
+    }
+
+    function isValidWithdrawal(data) {
+      return data.keys().hasAll(['userId', 'userEmail', 'userName', 'amount', 'bankDetails', 'status', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.amount is number && data.amount > 0 &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             isValidDateString(data.createdAt);
+    }
+
+    // Rules
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
+    match /withdrawals/{withdrawalId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidWithdrawal(request.resource.data);
+      allow update: if isAdmin();
+    }
+
+    match /packages/{packageId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidPackage(request.resource.data);
+    }
+
+    match /investments/{investmentId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidInvestment(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /stats/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow create: if true;
+      allow read, delete: if isAdmin();
+    }
+    
+    match /test/connection {
+      allow read: if true;
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
+    }
+  }
+}
