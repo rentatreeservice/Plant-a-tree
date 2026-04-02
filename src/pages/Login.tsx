@@ -4,7 +4,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { Leaf, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import logo from '../assets/logo.png';
+const logo = "/logo.png";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');

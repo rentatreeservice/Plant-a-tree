@@ -32,7 +32,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { TREE_IMAGES } from '../assets/treeImages';
 import { DEFAULT_PACKAGES } from '../constants/treeData';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
-import logo from '../assets/logo.png';
+const logo = "/logo.png";
 
 const UPI_ID = "rentatreeservice@gmail.com";
 // However, for the QR code to work, we need a valid UPI ID. 
@@ -107,8 +107,8 @@ const Dashboard: React.FC = () => {
     if (!profile || !depositAmount) return;
 
     const amount = Number(depositAmount);
-    if (amount < 10) {
-      alert("Minimum deposit amount is ₹10.");
+    if (amount < 1) {
+      alert("Minimum deposit amount is ₹1.");
       return;
     }
 
@@ -245,7 +245,7 @@ const Dashboard: React.FC = () => {
               {!showQR ? (
                 <>
                   <div className="grid grid-cols-2 gap-4 mb-8">
-                    {[300, 500, 800, 1500].map((amount) => (
+                    {[100, 300, 500, 1000].map((amount) => (
                       <button
                         key={amount}
                         onClick={() => setDepositAmount(amount.toString())}
@@ -268,7 +268,7 @@ const Dashboard: React.FC = () => {
                         <input 
                           type="number" 
                           required
-                          min="300"
+                          min="1"
                           value={depositAmount}
                           onChange={e => setDepositAmount(e.target.value)}
                           placeholder="Enter amount"

@@ -23,7 +23,7 @@ import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firesto
 import { TREE_IMAGES } from '../assets/treeImages';
 import { TreePackage } from '../types';
 import { DEFAULT_PACKAGES } from '../constants/treeData';
-import logo from '../assets/logo.png';
+const logo = "/logo.png";
 
 const LandingPage: React.FC = () => {
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
@@ -455,7 +455,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl md:text-5xl font-bold mb-8">Ready to Start Your Investment Journey?</h2>
           <p className="text-xl text-green-100 mb-12">
-            Join thousands of investors who are growing their wealth while making a positive environmental impact. Start with as little as ₹300.
+            Join thousands of investors who are growing their wealth while making a positive environmental impact. Start with as little as ₹1.
           </p>
           <Link to="/signup">
             <motion.button 

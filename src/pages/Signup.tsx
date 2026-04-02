@@ -5,7 +5,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { Leaf, Mail, Lock, User, ArrowRight, Loader2, Gift } from 'lucide-react';
 import { motion } from 'motion/react';
-import logo from '../assets/logo.png';
+const logo = "/logo.png";
 
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
 
@@ -19,6 +19,12 @@ const Signup: React.FC = () => {
   const [searchParams] = useSearchParams();
   const referralCode = searchParams.get('ref');
   const [referralCodeInput, setReferralCodeInput] = useState(referralCode || '');
+
+  useEffect(() => {
+    if (referralCode) {
+      setReferralCodeInput(referralCode);
+    }
+  }, [referralCode]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
