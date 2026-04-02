@@ -32,7 +32,7 @@ import { TreePackage, UserProfile, ImpactStats, ContactMessage, Referral, Ticket
 import { motion, AnimatePresence } from 'motion/react';
 import { TREE_IMAGES } from '../assets/treeImages';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
-const logo = "/logo.png";
+const logo = "https://raw.githubusercontent.com/rentatreeservice/Plant-a-tree/main/src/assets/logo.png";
 
 const AdminPanel: React.FC = () => {
   const { user, profile, logout, loading } = useAuth();
@@ -1198,8 +1198,8 @@ const ManageFinance = () => {
                   </div>
                   <div>
                     <div className="font-bold text-slate-900">₹{dep.amount.toLocaleString()}</div>
+                    <div className="text-xs text-slate-400">{dep.userName || 'Unknown'} ({dep.userEmail || dep.userId})</div>
                     <div className="text-xs text-slate-400">UTR: {dep.utrNumber} • {new Date(dep.date).toLocaleString()}</div>
-                    <div className="text-xs font-bold text-blue-600 mt-1">User ID: {dep.userId}</div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">

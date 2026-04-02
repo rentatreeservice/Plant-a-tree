@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Leaf, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
-const logo = "/logo.png";
+const logo = "https://raw.githubusercontent.com/rentatreeservice/Plant-a-tree/main/src/assets/logo.png";
 
 const Navbar: React.FC = () => {
   const location = useLocation();

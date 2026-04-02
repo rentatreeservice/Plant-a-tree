@@ -32,7 +32,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { TREE_IMAGES } from '../assets/treeImages';
 import { DEFAULT_PACKAGES } from '../constants/treeData';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
-const logo = "/logo.png";
+const logo = "https://raw.githubusercontent.com/rentatreeservice/Plant-a-tree/main/src/assets/logo.png";
 
 const UPI_ID = "rentatreeservice@gmail.com";
 // However, for the QR code to work, we need a valid UPI ID. 
@@ -126,6 +126,8 @@ const Dashboard: React.FC = () => {
       // Log the deposit request in Firestore
       await addDoc(collection(db, 'transactions'), {
         userId: user?.uid,
+        userEmail: profile?.email || user?.email,
+        userName: profile?.displayName || user?.displayName || 'Anonymous',
         type: 'deposit',
         amount: Number(depositAmount),
         description: isTicketDeposit ? 'Lottery Ticket Deposit' : `Wallet Deposit (UTR: ${utrNumber})`,
@@ -204,6 +206,8 @@ const Dashboard: React.FC = () => {
       // Log transaction
       await addDoc(collection(db, 'transactions'), {
         userId: profile.uid,
+        userEmail: profile.email,
+        userName: profile.displayName,
         amount: amount,
         type: 'withdrawal',
         description: 'Withdrawal sent',
@@ -973,6 +977,8 @@ const MyInvestments = () => {
       // Log transaction
       await addDoc(collection(db, 'transactions'), {
         userId: user!.uid,
+        userEmail: profile?.email || user?.email,
+        userName: profile?.displayName || user?.displayName || 'Anonymous',
         amount: earned,
         type: 'return',
         description: `Returns from ${inv.packageName}`,
@@ -1729,6 +1735,8 @@ const ReferralSection = () => {
 
           await addDoc(collection(db, 'transactions'), {
             userId: profile!.uid,
+            userEmail: profile?.email || user?.email,
+            userName: profile?.displayName || user?.displayName || 'Anonymous',
             amount: result,
             type: 'return',
             description: 'Lucky Spin Reward',
@@ -1959,6 +1967,8 @@ const EarnMoreSection = ({ setShowDeposit, setDepositAmount, setIsTicketDeposit 
 
       await addDoc(collection(db, 'transactions'), {
         userId: profile.uid,
+        userEmail: profile.email,
+        userName: profile.displayName,
         amount: 100,
         type: 'investment',
         description: 'Lottery Ticket Purchase',

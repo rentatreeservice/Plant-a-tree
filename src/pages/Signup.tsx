@@ -5,7 +5,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { Leaf, Mail, Lock, User, ArrowRight, Loader2, Gift } from 'lucide-react';
 import { motion } from 'motion/react';
-const logo = "/logo.png";
+const logo = "https://raw.githubusercontent.com/rentatreeservice/Plant-a-tree/main/src/assets/logo.png";
 
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
 
