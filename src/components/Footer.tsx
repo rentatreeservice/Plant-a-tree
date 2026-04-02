@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Twitter, Instagram, Linkedin, Mail, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
+import logo from '../assets/logo.png';
 
 const Footer: React.FC = () => {
   return (
@@ -11,7 +12,7 @@ const Footer: React.FC = () => {
           <div className="space-y-6">
             <Link to="/" className="flex items-center space-x-2 text-white group">
               <motion.img 
-                src="/logo.png" 
+                src={logo} 
                 alt="Plant a Tree Logo" 
                 className="h-12 w-12 object-contain"
                 whileHover={{ rotate: 10, scale: 1.1 }}

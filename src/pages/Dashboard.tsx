@@ -31,6 +31,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { TREE_IMAGES } from '../assets/treeImages';
 import { DEFAULT_PACKAGES } from '../constants/treeData';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
+import logo from '../assets/logo.png';
 
 const UPI_ID = "rentatreeservice@gmail.com";
 // However, for the QR code to work, we need a valid UPI ID. 
@@ -468,7 +470,7 @@ const Dashboard: React.FC = () => {
           onClick={() => navigate('/')}
         >
           <motion.img 
-            src="/logo.png" 
+            src={logo} 
             alt="Plant a Tree Logo" 
             className="h-16 w-16 object-contain"
             whileHover={{ rotate: 10, scale: 1.1 }}
@@ -575,6 +577,10 @@ const AdminWithdrawals = () => {
     const q = query(collection(db, 'withdrawals'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snap) => {
       setWithdrawals(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as WithdrawalRequest)));
+      setLoading(false);
+    }, (error) => {
+      console.error("AdminWithdrawals onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'withdrawals');
       setLoading(false);
     });
     return () => unsubscribe();
@@ -706,18 +712,27 @@ const Overview = () => {
     const qTrans = query(collection(db, 'transactions'), where('userId', '==', user.uid), orderBy('date', 'desc'), limit(5));
     const unsubTrans = onSnapshot(qTrans, (snap) => {
       setActivities(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error("Overview Transactions onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'transactions');
     });
 
     // Fetch active investments count
     const qInv = query(collection(db, 'investments'), where('userId', '==', user.uid), where('status', '==', 'active'));
     const unsubInv = onSnapshot(qInv, (snap) => {
       setActiveTrees(snap.size);
+    }, (error) => {
+      console.error("Overview Investments onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'investments');
     });
 
     // Fetch featured packages
     const qPkg = query(collection(db, 'packages'), limit(3));
     const unsubPkg = onSnapshot(qPkg, (snap) => {
       setFeaturedPackages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TreePackage)));
+    }, (error) => {
+      console.error("Overview Packages onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'packages');
     });
 
     // Fetch global stats if admin
@@ -725,6 +740,9 @@ const Overview = () => {
     if (profile?.role === 'admin') {
       unsubStats = onSnapshot(doc(db, 'stats', 'global'), (doc) => {
         setGlobalStats(doc.data());
+      }, (error) => {
+        console.error("Overview Stats onSnapshot error:", error);
+        handleFirestoreError(error, OperationType.GET, 'stats/global');
       });
     }
 
@@ -880,6 +898,10 @@ const MyInvestments = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Investment));
       setInvestments(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("MyInvestments onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'investments');
       setLoading(false);
     });
     return () => unsubscribe();
@@ -1178,6 +1200,9 @@ const Packages = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TreePackage));
       setPackages(data);
+    }, (error) => {
+      console.error("Packages onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'packages');
     });
     return () => unsubscribe();
   }, []);
@@ -1187,6 +1212,10 @@ const Packages = () => {
     const q = query(collection(db, 'investments'), where('userId', '==', profile.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUserInvestments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Investment)));
+      setLoading(false);
+    }, (error) => {
+      console.error("UserInvestments onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'investments');
       setLoading(false);
     });
     return () => unsubscribe();
@@ -1454,6 +1483,10 @@ const AdminUsers = () => {
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUsers(snapshot.docs.map(doc => doc.data() as UserProfile));
+      setLoading(false);
+    }, (error) => {
+      console.error("AdminUsers onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'users');
       setLoading(false);
     });
     return () => unsubscribe();

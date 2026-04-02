@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { Leaf, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import logo from '../assets/logo.png';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -37,7 +38,7 @@ const Login: React.FC = () => {
         <div className="text-center mb-10">
           <Link to="/" className="inline-flex justify-center mb-6">
             <img 
-              src="/logo.png" 
+              src={logo} 
               alt="Plant a Tree Logo" 
               className="h-20 w-20 object-contain"
               referrerPolicy="no-referrer"

@@ -51,7 +51,9 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (request.auth.token.email.lower() == "rentatreeservice@gmail.com" ||
+        (('email' in request.auth.token && 
+          (request.auth.token.email.lower() == "jainaman.aj79@gmail.com" ||
+           request.auth.token.email.lower() == "rentatreeservice@gmail.com")) ||
          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
@@ -130,41 +132,41 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isAuthenticated() && isOwner(userId) && request.resource.data.role == 'user';
-      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow update, delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
     }
 
     match /referrals/{referralId} {
       allow read: if isAuthenticated() && (resource.data.referrerId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && request.resource.data.referredId == request.auth.uid && isValidReferral(request.resource.data);
-      allow update: if isAuthenticated() && (resource.data.referrerId == request.auth.uid || isAdmin());
+      allow update, delete: if isAuthenticated() && (resource.data.referrerId == request.auth.uid || isAdmin());
     }
 
     match /tickets/{ticketId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && isValidTicket(request.resource.data);
-      allow update: if isAdmin();
+      allow update, delete: if isAdmin();
     }
 
     match /withdrawals/{withdrawalId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && isValidWithdrawal(request.resource.data);
-      allow update: if isAdmin();
+      allow update, delete: if isAdmin();
     }
 
     match /packages/{packageId} {
       allow read: if true;
-      allow write: if isAdmin() && isValidPackage(request.resource.data);
+      allow write, delete: if isAdmin() && isValidPackage(request.resource.data);
     }
 
     match /investments/{investmentId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && isValidInvestment(request.resource.data);
-      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     match /stats/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write, delete: if isAdmin();
     }
 
     match /messages/{messageId} {
@@ -179,7 +181,7 @@ service cloud.firestore {
     match /transactions/{transactionId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
-      allow update: if isAdmin();
+      allow update, delete: if isAdmin();
     }
   }
 }

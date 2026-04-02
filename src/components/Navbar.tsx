@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Leaf, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
+import logo from '../assets/logo.png';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
@@ -18,7 +19,7 @@ const Navbar: React.FC = () => {
         <div className="flex justify-between h-16 items-center">
           <Link to="/" className="flex items-center space-x-2 group">
             <motion.img 
-              src="/logo.png" 
+              src={logo} 
               alt="Plant a Tree Logo" 
               className="h-12 w-12 object-contain"
               whileHover={{ rotate: 10, scale: 1.1 }}

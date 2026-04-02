@@ -121,6 +121,22 @@
         "status": { "type": "string", "enum": ["success", "pending", "failed"] }
       },
       "required": ["userId", "amount", "type", "date", "status"]
+    },
+    "WithdrawalRequest": {
+      "title": "Withdrawal Request",
+      "description": "A request for funds withdrawal.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string", "format": "email" },
+        "userName": { "type": "string" },
+        "amount": { "type": "number" },
+        "bankDetails": { "type": "object" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "success"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "amount", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -155,6 +171,10 @@
     "/tickets/{ticketId}": {
       "schema": "Ticket",
       "description": "Lottery tickets"
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "WithdrawalRequest",
+      "description": "Withdrawal requests"
     }
   }
 }

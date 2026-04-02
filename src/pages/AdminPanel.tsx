@@ -19,7 +19,11 @@ import {
   X,
   Gift,
   Ticket,
-  Sparkles
+  Sparkles,
+  Eye,
+  ArrowUpRight,
+  ArrowDownLeft,
+  History
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
@@ -27,6 +31,8 @@ import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, quer
 import { TreePackage, UserProfile, ImpactStats, ContactMessage, Referral, Ticket as LotteryTicket } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { TREE_IMAGES } from '../assets/treeImages';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
+import logo from '../assets/logo.png';
 
 const AdminPanel: React.FC = () => {
   const { user, profile, logout, loading } = useAuth();
@@ -44,15 +50,31 @@ const AdminPanel: React.FC = () => {
     if (profile?.role !== 'admin') return;
 
     const qDep = query(collection(db, 'transactions'), where('type', '==', 'deposit'), where('status', '==', 'pending'));
+    const qWith = query(collection(db, 'withdrawals'), where('status', '==', 'pending'));
+
+    let depCount = 0;
+    let withCount = 0;
+
     const unsubDep = onSnapshot(qDep, (snap) => {
-      const depCount = snap.size;
-      const qWith = query(collection(db, 'withdrawals'), where('status', '==', 'pending'));
-      const unsubWith = onSnapshot(qWith, (snapWith) => {
-        setPendingCount(depCount + snapWith.size);
-      });
-      return () => unsubWith();
+      depCount = snap.size;
+      setPendingCount(depCount + withCount);
+    }, (error) => {
+      console.error("AdminPanel unsubDep error:", error);
+      handleFirestoreError(error, OperationType.GET, 'transactions');
     });
-    return () => unsubDep();
+
+    const unsubWith = onSnapshot(qWith, (snapWith) => {
+      withCount = snapWith.size;
+      setPendingCount(depCount + withCount);
+    }, (error) => {
+      console.error("AdminPanel unsubWith error:", error);
+      handleFirestoreError(error, OperationType.GET, 'withdrawals');
+    });
+
+    return () => {
+      unsubDep();
+      unsubWith();
+    };
   }, [profile]);
 
   if (loading || !user || !profile || profile.role !== 'admin') {
@@ -82,7 +104,7 @@ const AdminPanel: React.FC = () => {
           onClick={() => navigate('/')}
         >
           <motion.img 
-            src="/logo.png" 
+            src={logo} 
             alt="Plant a Tree Logo" 
             className="h-16 w-16 object-contain"
             whileHover={{ rotate: 10, scale: 1.1 }}
@@ -170,6 +192,9 @@ const AdminStats = () => {
           returnsPaid: 0
         });
       }
+    }, (error) => {
+      console.error("AdminStats onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'stats/global');
     });
     return () => unsub();
   }, []);
@@ -343,6 +368,10 @@ const ManagePackages = () => {
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TreePackage));
       setPackages(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("AdminPackages onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'packages');
       setLoading(false);
     });
     return () => unsub();
@@ -569,6 +598,19 @@ const ManagePackages = () => {
 const ManageUsers = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [userActivity, setUserActivity] = useState<{
+    investments: any[],
+    transactions: any[],
+    withdrawals: any[]
+  }>({ investments: [], transactions: [], withdrawals: [] });
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [editBalance, setEditBalance] = useState<number>(0);
+  const [isUpdatingBalance, setIsUpdatingBalance] = useState(false);
 
   useEffect(() => {
     const q = collection(db, 'users');
@@ -576,18 +618,120 @@ const ManageUsers = () => {
       const data = snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile));
       setUsers(data);
       setLoading(false);
+    }, (error) => {
+      console.error("ManageUsers onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'users');
+      setLoading(false);
     });
     return () => unsub();
   }, []);
 
+  const fetchUserActivity = async (uid: string) => {
+    setActivityLoading(true);
+    try {
+      const qInv = query(collection(db, 'investments'), where('userId', '==', uid));
+      const qTrans = query(collection(db, 'transactions'), where('userId', '==', uid));
+      const qWith = query(collection(db, 'withdrawals'), where('userId', '==', uid));
+
+      const [snapInv, snapTrans, snapWith] = await Promise.all([
+        getDocs(qInv),
+        getDocs(qTrans),
+        getDocs(qWith)
+      ]);
+
+      setUserActivity({
+        investments: snapInv.docs.map(d => ({ id: d.id, ...d.data() })),
+        transactions: snapTrans.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+        withdrawals: snapWith.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      });
+    } catch (err) {
+      console.error("Error fetching user activity:", err);
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
   const handleUpdateBalance = async (uid: string, amount: number) => {
+    setIsUpdatingBalance(true);
     try {
       await updateDoc(doc(db, 'users', uid), {
         balance: increment(amount)
       });
+      if (selectedUser && selectedUser.uid === uid) {
+        setSelectedUser({ ...selectedUser, balance: selectedUser.balance + amount });
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to update balance");
+    } finally {
+      setIsUpdatingBalance(false);
+    }
+  };
+
+  const handleSetBalance = async (uid: string, newBalance: number) => {
+    setIsUpdatingBalance(true);
+    try {
+      await updateDoc(doc(db, 'users', uid), {
+        balance: newBalance
+      });
+      if (selectedUser && selectedUser.uid === uid) {
+        setSelectedUser({ ...selectedUser, balance: newBalance });
+      }
+      alert("Balance updated successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to set balance");
+    } finally {
+      setIsUpdatingBalance(false);
+    }
+  };
+
+  const handleDeleteUser = async (user: UserProfile) => {
+    setIsDeleting(true);
+    try {
+      const uid = user.uid;
+      const email = user.email;
+
+      // Collections to clean up
+      const collections = [
+        'investments',
+        'transactions',
+        'withdrawals',
+        'referrals', // where referrerId == uid
+        'tickets'
+      ];
+
+      for (const coll of collections) {
+        let q;
+        if (coll === 'referrals') {
+          q = query(collection(db, coll), where('referrerId', '==', uid));
+        } else {
+          q = query(collection(db, coll), where('userId', '==', uid));
+        }
+        const snap = await getDocs(q);
+        for (const d of snap.docs) {
+          await deleteDoc(doc(db, coll, d.id));
+        }
+      }
+
+      // Also clean up referrals where the user was the one referred
+      const qRefAsReferred = query(collection(db, 'referrals'), where('referredEmail', '==', email));
+      const snapRefAsReferred = await getDocs(qRefAsReferred);
+      for (const d of snapRefAsReferred.docs) {
+        await deleteDoc(doc(db, 'referrals', d.id));
+      }
+
+      // Finally delete the user profile
+      await deleteDoc(doc(db, 'users', uid));
+
+      alert(`User ${user.displayName} and all associated data deleted successfully.`);
+      setShowDeleteConfirm(false);
+      setUserToDelete(null);
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      alert("Failed to delete user completely.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -595,60 +739,253 @@ const ManageUsers = () => {
     <div className="space-y-8">
       <h2 className="text-2xl font-bold text-slate-900">Platform Users</h2>
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 border-b border-slate-100">
-            <tr>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">User</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Role</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Balance</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Invested</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {users.map((u) => (
-              <tr key={u.uid} className="hover:bg-slate-50/50 transition-all">
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center font-bold text-green-600">
-                      {u.displayName[0]}
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-900">{u.displayName}</div>
-                      <div className="text-xs text-slate-400">{u.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                    u.role === 'admin' ? 'bg-purple-50 text-purple-600' : 'bg-green-50 text-green-600'
-                  }`}>
-                    {u.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 font-bold text-slate-900">₹{u.balance.toLocaleString()}</td>
-                <td className="px-6 py-4 font-bold text-slate-900">₹{u.totalInvested.toLocaleString()}</td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-2">
-                    <button 
-                      onClick={() => handleUpdateBalance(u.uid, 100)}
-                      className="px-3 py-1 bg-green-50 text-green-600 font-bold rounded-lg text-xs hover:bg-green-600 hover:text-white transition-all"
-                    >
-                      +₹100
-                    </button>
-                    <button 
-                      onClick={() => handleUpdateBalance(u.uid, -100)}
-                      className="px-3 py-1 bg-red-50 text-red-600 font-bold rounded-lg text-xs hover:bg-red-600 hover:text-white transition-all"
-                    >
-                      -₹100
-                    </button>
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">User</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Role</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Balance</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Invested</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {users.map((u) => (
+                <tr key={u.uid} className="hover:bg-slate-50/50 transition-all">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center font-bold text-green-600">
+                        {u.displayName[0]}
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-900">{u.displayName}</div>
+                        <div className="text-xs text-slate-400">{u.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                      u.role === 'admin' ? 'bg-purple-50 text-purple-600' : 'bg-green-50 text-green-600'
+                    }`}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-bold text-slate-900">₹{u.balance.toLocaleString()}</td>
+                  <td className="px-6 py-4 font-bold text-slate-900">₹{u.totalInvested.toLocaleString()}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end space-x-2">
+                      <button 
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setEditBalance(u.balance);
+                          setShowUserModal(true);
+                          fetchUserActivity(u.uid);
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        title="View Details"
+                      >
+                        <Eye className="h-5 w-5" />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setUserToDelete(u);
+                          setShowDeleteConfirm(true);
+                        }}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        title="Delete User"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* User Details Modal */}
+      <AnimatePresence>
+        {showUserModal && selectedUser && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-4xl rounded-[2.5rem] p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto"
+            >
+              <button 
+                onClick={() => setShowUserModal(false)}
+                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+              >
+                <X className="h-6 w-6" />
+              </button>
+
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center font-bold text-2xl text-green-600">
+                    {selectedUser.displayName[0]}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-900">{selectedUser.displayName}</h3>
+                    <p className="text-slate-500">{selectedUser.email}</p>
+                    <p className="text-xs text-slate-400">UID: {selectedUser.uid}</p>
+                  </div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-1">Current Balance</div>
+                  <div className="text-2xl font-black text-green-600">₹{selectedUser.balance.toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="space-y-6">
+                  <div className="bg-white p-6 rounded-3xl border border-slate-200">
+                    <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                      <Wallet className="h-5 w-5 text-blue-600" />
+                      Modify Balance
+                    </h4>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <input 
+                          type="number"
+                          value={editBalance}
+                          onChange={(e) => setEditBalance(Number(e.target.value))}
+                          className="flex-grow px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
+                        />
+                        <button 
+                          onClick={() => handleSetBalance(selectedUser.uid, editBalance)}
+                          disabled={isUpdatingBalance}
+                          className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all disabled:opacity-50"
+                        >
+                          Set
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleUpdateBalance(selectedUser.uid, 500)} className="flex-grow py-2 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-600 hover:text-white transition-all">+₹500</button>
+                        <button onClick={() => handleUpdateBalance(selectedUser.uid, 1000)} className="flex-grow py-2 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-600 hover:text-white transition-all">+₹1000</button>
+                        <button onClick={() => handleUpdateBalance(selectedUser.uid, -500)} className="flex-grow py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all">-₹500</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-3xl border border-slate-200">
+                    <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                      <Package className="h-5 w-5 text-green-600" />
+                      Active Investments
+                    </h4>
+                    <div className="space-y-3">
+                      {activityLoading ? (
+                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-slate-300" /></div>
+                      ) : userActivity.investments.length === 0 ? (
+                        <p className="text-sm text-slate-400 italic">No active investments.</p>
+                      ) : (
+                        userActivity.investments.map(inv => (
+                          <div key={inv.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+                            <div>
+                              <div className="text-sm font-bold text-slate-700">{inv.packageName}</div>
+                              <div className="text-[10px] text-slate-400">₹{inv.amount} • {inv.status}</div>
+                            </div>
+                            <div className="text-xs font-bold text-green-600">₹{inv.dailyReturn}/day</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="bg-white p-6 rounded-3xl border border-slate-200">
+                    <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                      <History className="h-5 w-5 text-purple-600" />
+                      Recent Transactions
+                    </h4>
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                      {activityLoading ? (
+                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-slate-300" /></div>
+                      ) : userActivity.transactions.length === 0 ? (
+                        <p className="text-sm text-slate-400 italic">No transactions found.</p>
+                      ) : (
+                        userActivity.transactions.map(tx => (
+                          <div key={tx.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-1.5 rounded-lg ${tx.type === 'deposit' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
+                                {tx.type === 'deposit' ? <ArrowDownLeft className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-slate-700 uppercase">{tx.type}</div>
+                                <div className="text-[10px] text-slate-400">{new Date(tx.date).toLocaleDateString()}</div>
+                              </div>
+                            </div>
+                            <div className={`text-sm font-bold ${tx.type === 'deposit' ? 'text-blue-600' : 'text-orange-600'}`}>
+                              ₹{tx.amount}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && userToDelete && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="h-10 w-10 text-red-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">Delete User?</h3>
+              <p className="text-slate-500 mb-8">
+                Are you sure you want to delete <span className="font-bold text-slate-900">{userToDelete.displayName}</span>? 
+                This will permanently remove all their investments, transactions, and profile data. This action cannot be undone.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => handleDeleteUser(userToDelete)}
+                  disabled={isDeleting}
+                  className="w-full py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-200 flex items-center justify-center space-x-2"
+                >
+                  {isDeleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+                  <span>Delete Everything</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setUserToDelete(null);
+                  }}
+                  disabled={isDeleting}
+                  className="w-full py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -662,6 +999,10 @@ const ManageMessages = () => {
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactMessage));
       setMessages(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("ManageMessages onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'messages');
       setLoading(false);
     });
     return () => unsub();
@@ -719,18 +1060,27 @@ const ManageFinance = () => {
     const qDep = query(collection(db, 'transactions'), where('type', '==', 'deposit'), where('status', '==', 'pending'));
     const unsubDep = onSnapshot(qDep, (snap) => {
       setPendingDeposits(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error("ManageFinance unsubDep error:", error);
+      handleFirestoreError(error, OperationType.GET, 'transactions');
     });
 
     // Listen for pending withdrawals
     const qWith = query(collection(db, 'withdrawals'), where('status', '==', 'pending'));
     const unsubWith = onSnapshot(qWith, (snap) => {
       setPendingWithdrawals(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error("ManageFinance unsubWith error:", error);
+      handleFirestoreError(error, OperationType.GET, 'withdrawals');
     });
 
     // Listen for recent history (processed transactions)
     const qHist = query(collection(db, 'transactions'), where('status', 'in', ['success', 'rejected']), orderBy('date', 'desc'), limit(20));
     const unsubHist = onSnapshot(qHist, (snap) => {
       setHistory(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error("ManageFinance unsubHist error:", error);
+      handleFirestoreError(error, OperationType.GET, 'transactions');
     });
 
     setLoading(false);

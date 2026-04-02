@@ -23,6 +23,7 @@ import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firesto
 import { TREE_IMAGES } from '../assets/treeImages';
 import { TreePackage } from '../types';
 import { DEFAULT_PACKAGES } from '../constants/treeData';
+import logo from '../assets/logo.png';
 
 const LandingPage: React.FC = () => {
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
@@ -86,7 +87,7 @@ const LandingPage: React.FC = () => {
             className="flex justify-center mb-8"
           >
             <img 
-              src="/logo.png" 
+              src={logo} 
               alt="Plant a Tree Logo" 
               className="h-32 w-32 md:h-40 md:w-40 object-contain drop-shadow-2xl"
               referrerPolicy="no-referrer"

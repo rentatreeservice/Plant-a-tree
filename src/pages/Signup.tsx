@@ -5,6 +5,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { Leaf, Mail, Lock, User, ArrowRight, Loader2, Gift } from 'lucide-react';
 import { motion } from 'motion/react';
+import logo from '../assets/logo.png';
 
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
 
@@ -86,7 +87,7 @@ const Signup: React.FC = () => {
         <div className="text-center mb-10">
           <Link to="/" className="inline-flex justify-center mb-6">
             <img 
-              src="/logo.png" 
+              src={logo} 
               alt="Plant a Tree Logo" 
               className="h-20 w-20 object-contain"
               referrerPolicy="no-referrer"
