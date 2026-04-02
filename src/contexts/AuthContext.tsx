@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = docSnap.data() as UserProfile;
         setProfile(data);
         
-        const isAdminEmail = ['rentatreeservice@gmail.com', 'jainaman.aj79@gmail.com'].includes(user.email?.toLowerCase() || '');
+        const isAdminEmail = ['rentatreeservice@gmail.com'].includes(user.email?.toLowerCase() || '');
         if (isAdminEmail && data.role !== 'admin') {
           try {
             await updateDoc(profileRef, { role: 'admin' });
