@@ -52,8 +52,8 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() &&
         (request.auth.token.email.lower() == "rentatreeservice@gmail.com" ||
-         request.auth.token.email.lower() == "jainaman.aj79@gmail.com" ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
 
     function isValidDateString(dateStr) {
@@ -95,7 +95,7 @@ service cloud.firestore {
              data.userId == request.auth.uid &&
              data.amount is number && data.amount > 0 &&
              data.type in ['deposit', 'withdrawal', 'investment', 'refund', 'return'] &&
-             data.status in ['success', 'pending', 'failed'] &&
+             data.status in ['success', 'pending', 'failed', 'rejected'] &&
              isValidDateString(data.date);
     }
 
@@ -103,15 +103,46 @@ service cloud.firestore {
       return data.keys().hasAll(['userId', 'userEmail', 'userName', 'amount', 'bankDetails', 'status', 'createdAt']) &&
              data.userId == request.auth.uid &&
              data.amount is number && data.amount > 0 &&
-             data.status in ['pending', 'approved', 'rejected'] &&
+             data.status in ['pending', 'approved', 'rejected', 'success'] &&
              isValidDateString(data.createdAt);
+    }
+
+    function isValidReferral(data) {
+      return data.keys().hasAll(['referrerId', 'referredId', 'referredEmail', 'referredName', 'investmentAmount', 'spinsEarned', 'spinsUsed', 'createdAt']) &&
+             data.referrerId is string &&
+             data.referredId is string &&
+             data.investmentAmount is number &&
+             data.spinsEarned is number &&
+             data.spinsUsed is number &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidTicket(data) {
+      return data.keys().hasAll(['userId', 'ticketNumber', 'amount', 'date']) &&
+             data.userId == request.auth.uid &&
+             data.ticketNumber is string &&
+             data.ticketNumber.size() == 7 &&
+             data.amount == 100 &&
+             isValidDateString(data.date);
     }
 
     // Rules
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId) && request.resource.data.role == 'user';
       allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
+    match /referrals/{referralId} {
+      allow read: if isAuthenticated() && (resource.data.referrerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.referredId == request.auth.uid && isValidReferral(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.referrerId == request.auth.uid || isAdmin());
+    }
+
+    match /tickets/{ticketId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidTicket(request.resource.data);
+      allow update: if isAdmin();
     }
 
     match /withdrawals/{withdrawalId} {
@@ -148,6 +179,7 @@ service cloud.firestore {
     match /transactions/{transactionId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
+      allow update: if isAdmin();
     }
   }
 }

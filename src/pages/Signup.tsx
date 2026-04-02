@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { Leaf, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { Leaf, Mail, Lock, User, ArrowRight, Loader2, Gift } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
@@ -15,6 +15,9 @@ const Signup: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const referralCode = searchParams.get('ref');
+  const [referralCodeInput, setReferralCodeInput] = useState(referralCode || '');
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +37,7 @@ const Signup: React.FC = () => {
       // Create user profile in Firestore
       console.log('Creating Firestore document...');
       const userPath = `users/${user.uid}`;
-      const isAdmin = ['rentatreeservice@gmail.com', 'jainaman.aj79@gmail.com'].includes(email.toLowerCase());
+      const isAdmin = ['rentatreeservice@gmail.com'].includes(email.toLowerCase());
       try {
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
@@ -44,6 +47,7 @@ const Signup: React.FC = () => {
           balance: 0,
           totalInvested: 0,
           totalReturns: 0,
+          referredBy: referralCodeInput || null,
           createdAt: new Date().toISOString()
         });
         console.log('Firestore document created');
@@ -139,6 +143,20 @@ const Signup: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-green-900 ml-1">Referral Code (Optional)</label>
+            <div className="relative">
+              <Gift className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input 
+                type="text" 
+                value={referralCodeInput}
+                onChange={(e) => setReferralCodeInput(e.target.value)}
+                placeholder="Enter referral code"
                 className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
               />
             </div>

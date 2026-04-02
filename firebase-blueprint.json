@@ -59,8 +59,39 @@
         "treesPlanted": { "type": "number" },
         "activeInvestors": { "type": "number" },
         "totalInvested": { "type": "number" },
-        "returnsPaid": { "type": "number" }
+        "returnsPaid": { "type": "number" },
+        "todayWinningTicket": { "type": "string", "description": "Current winning ticket number for the lottery" }
       }
+    },
+    "Referral": {
+      "title": "Referral",
+      "description": "Tracks user referrals and lucky spin eligibility.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "referrerId": { "type": "string", "description": "UID of the user who referred" },
+        "referredId": { "type": "string", "description": "UID of the new user" },
+        "referredEmail": { "type": "string" },
+        "referredName": { "type": "string" },
+        "investmentAmount": { "type": "number", "description": "Amount the referred user invested" },
+        "spinsEarned": { "type": "number", "description": "Number of spins earned from this referral" },
+        "spinsUsed": { "type": "number", "description": "Number of spins already used" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "referrerId", "referredId", "createdAt"]
+    },
+    "Ticket": {
+      "title": "Ticket",
+      "description": "Stores lottery tickets purchased by users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "ticketNumber": { "type": "string", "description": "7-digit ticket number" },
+        "amount": { "type": "number", "description": "Cost of the ticket (100 Rs)" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "ticketNumber", "amount", "date"]
     },
     "ContactMessage": {
       "title": "Contact Message",
@@ -116,6 +147,14 @@
     "/transactions/{transactionId}": {
       "schema": "Transaction",
       "description": "User transaction history"
+    },
+    "/referrals/{referralId}": {
+      "schema": "Referral",
+      "description": "Referral tracking"
+    },
+    "/tickets/{ticketId}": {
+      "schema": "Ticket",
+      "description": "Lottery tickets"
     }
   }
 }

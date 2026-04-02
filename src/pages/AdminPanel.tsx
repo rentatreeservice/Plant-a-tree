@@ -16,12 +16,15 @@ import {
   Loader2,
   Wallet,
   Mail,
-  X
+  X,
+  Gift,
+  Ticket,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy, increment } from 'firebase/firestore';
-import { TreePackage, UserProfile, ImpactStats, ContactMessage } from '../types';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, query, orderBy, increment, where, getDocs, limit } from 'firebase/firestore';
+import { TreePackage, UserProfile, ImpactStats, ContactMessage, Referral, Ticket as LotteryTicket } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { TREE_IMAGES } from '../assets/treeImages';
 
@@ -29,12 +32,28 @@ const AdminPanel: React.FC = () => {
   const { user, profile, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     if (!loading && (!user || profile?.role !== 'admin')) {
       navigate('/dashboard');
     }
   }, [user, profile, loading, navigate]);
+
+  useEffect(() => {
+    if (profile?.role !== 'admin') return;
+
+    const qDep = query(collection(db, 'transactions'), where('type', '==', 'deposit'), where('status', '==', 'pending'));
+    const unsubDep = onSnapshot(qDep, (snap) => {
+      const depCount = snap.size;
+      const qWith = query(collection(db, 'withdrawals'), where('status', '==', 'pending'));
+      const unsubWith = onSnapshot(qWith, (snapWith) => {
+        setPendingCount(depCount + snapWith.size);
+      });
+      return () => unsubWith();
+    });
+    return () => unsubDep();
+  }, [profile]);
 
   if (loading || !user || !profile || profile.role !== 'admin') {
     return (
@@ -47,7 +66,10 @@ const AdminPanel: React.FC = () => {
   const navItems = [
     { icon: <BarChart3 className="h-5 w-5" />, label: 'Stats', path: '/admin' },
     { icon: <Package className="h-5 w-5" />, label: 'Packages', path: '/admin/packages' },
+    { icon: <Wallet className="h-5 w-5" />, label: 'Finance', path: '/admin/finance' },
     { icon: <Users className="h-5 w-5" />, label: 'Users', path: '/admin/users' },
+    { icon: <Gift className="h-5 w-5" />, label: 'Referrals', path: '/admin/referrals' },
+    { icon: <Ticket className="h-5 w-5" />, label: 'Lottery', path: '/admin/lottery' },
     { icon: <Mail className="h-5 w-5" />, label: 'Messages', path: '/admin/messages' },
   ];
 
@@ -82,7 +104,12 @@ const AdminPanel: React.FC = () => {
                   whileTap={{ scale: 0.95 }}
                 >
                   {item.icon}
-                  <span className="font-semibold">{item.label}</span>
+                  <span className="font-semibold flex-grow">{item.label}</span>
+                  {item.label === 'Finance' && pendingCount > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                      {pendingCount}
+                    </span>
+                  )}
                 </motion.div>
               </Link>
             );
@@ -115,7 +142,10 @@ const AdminPanel: React.FC = () => {
         <Routes>
           <Route path="/" element={<AdminStats />} />
           <Route path="/packages" element={<ManagePackages />} />
+          <Route path="/finance" element={<ManageFinance />} />
           <Route path="/users" element={<ManageUsers />} />
+          <Route path="/referrals" element={<ManageReferrals />} />
+          <Route path="/lottery" element={<ManageLottery />} />
           <Route path="/messages" element={<ManageMessages />} />
         </Routes>
       </main>
@@ -131,6 +161,14 @@ const AdminStats = () => {
     const unsub = onSnapshot(doc(db, 'stats', 'global'), (docSnap) => {
       if (docSnap.exists()) {
         setStats(docSnap.data() as ImpactStats);
+      } else {
+        // Initialize stats if they don't exist
+        setDoc(doc(db, 'stats', 'global'), {
+          treesPlanted: 0,
+          activeInvestors: 0,
+          totalInvested: 0,
+          returnsPaid: 0
+        });
       }
     });
     return () => unsub();
@@ -155,10 +193,36 @@ const AdminStats = () => {
         ))}
       </div>
 
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-        <h3 className="text-lg font-bold text-slate-900 mb-6">Platform Overview</h3>
-        <div className="h-64 flex items-center justify-center text-slate-300 font-bold italic">
-          Platform analytics chart will appear here
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900 mb-6">Finance Overview</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+              <div className="flex items-center space-x-3">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                <span className="font-semibold text-slate-700">Pending Deposits</span>
+              </div>
+              <Link to="/admin/finance" className="px-4 py-1 bg-green-600 text-white text-xs font-bold rounded-full hover:bg-green-700 transition-all">
+                View All
+              </Link>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+              <div className="flex items-center space-x-3">
+                <Wallet className="h-5 w-5 text-orange-600" />
+                <span className="font-semibold text-slate-700">Withdrawal Requests</span>
+              </div>
+              <Link to="/admin/finance" className="px-4 py-1 bg-orange-600 text-white text-xs font-bold rounded-full hover:bg-orange-700 transition-all">
+                View All
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900 mb-6">Platform Overview</h3>
+          <div className="h-32 flex items-center justify-center text-slate-300 font-bold italic">
+            Platform analytics chart will appear here
+          </div>
         </div>
       </div>
     </div>
@@ -176,6 +240,7 @@ const ManagePackages = () => {
     investmentAmount: 0,
     durationDays: 0,
     totalReturn: 0,
+    dailyReturn: 0,
     imageUrl: '',
     badge: '',
     tagline: ''
@@ -189,60 +254,84 @@ const ManagePackages = () => {
         investmentAmount: 0,
         durationDays: 125,
         totalReturn: 250,
+        dailyReturn: 2,
         badge: 'Free for everyone',
         description: 'A special gift for everyone to start their sustainable wealth journey. Plant a tree for free and watch it grow into real returns.',
-        imageUrl: 'https://picsum.photos/seed/freeplant/400/400'
+        imageUrl: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=400'
       },
       {
         name: 'Marigold',
         tagline: 'Entry level plan - Perfect for beginners',
         investmentAmount: 300,
         durationDays: 45,
-        totalReturn: 90,
+        totalReturn: 389,
+        dailyReturn: 8.64,
         badge: 'Perfect for beginners',
         description: 'Marigolds are easy to grow and provide a steady entry into the world of green investments.',
-        imageUrl: 'https://picsum.photos/seed/marigold/400/400'
+        imageUrl: TREE_IMAGES.marigold
       },
       {
         name: 'Rose',
         tagline: 'Popular choice - Most popular',
         investmentAmount: 500,
         durationDays: 45,
-        totalReturn: 270,
+        totalReturn: 769.95,
+        dailyReturn: 17.11,
         badge: 'Most popular',
         description: 'The most popular choice for our investors, offering a beautiful balance of investment and returns.',
-        imageUrl: 'https://picsum.photos/seed/rose/400/400'
+        imageUrl: TREE_IMAGES.rose
       },
       {
         name: 'Tulsi',
         tagline: 'Value option - Best value',
         investmentAmount: 800,
         durationDays: 60,
-        totalReturn: 600,
+        totalReturn: 1799.8,
+        dailyReturn: 30.00,
         badge: 'Best value',
         description: 'Known for its healing properties, Tulsi also provides excellent value for your investment.',
-        imageUrl: 'https://picsum.photos/seed/tulsi/400/400'
+        imageUrl: TREE_IMAGES.tulsi
       },
       {
         name: 'Mango',
         tagline: 'Premium investment - Premium investor',
         investmentAmount: 1500,
         durationDays: 90,
-        totalReturn: 1800,
+        totalReturn: 2899.4,
+        dailyReturn: 32.21,
         badge: 'Premium investor',
         description: 'Our premium package for serious investors looking for significant long-term growth.',
-        imageUrl: 'https://picsum.photos/seed/mango/400/400'
+        imageUrl: TREE_IMAGES.mango
       }
     ];
 
     try {
+      // Clear existing packages first
+      const q = query(collection(db, 'packages'));
+      const snap = await getDocs(q);
+      for (const d of snap.docs) {
+        await deleteDoc(doc(db, 'packages', d.id));
+      }
+
       for (const pkg of defaultPackages) {
         await addDoc(collection(db, 'packages'), {
           ...pkg,
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9)
         });
       }
-      alert("Successfully seeded default packages!");
+
+      // Initialize global stats if not exists
+      const statsDoc = await getDoc(doc(db, 'stats', 'global'));
+      if (!statsDoc.exists()) {
+        await setDoc(doc(db, 'stats', 'global'), {
+          treesPlanted: 0,
+          totalInvestors: 0,
+          totalInvested: 0,
+          todayWinningTicket: '1234567'
+        });
+      }
+
+      alert("Successfully seeded default packages and initialized stats!");
     } catch (err) {
       console.error(err);
       alert("Failed to seed packages");
@@ -272,7 +361,7 @@ const ManagePackages = () => {
       }
       setShowModal(false);
       setEditingPkg(null);
-      setPkgForm({ name: '', description: '', investmentAmount: 0, durationDays: 0, totalReturn: 0, imageUrl: '', badge: '', tagline: '' });
+      setPkgForm({ name: '', description: '', investmentAmount: 0, durationDays: 0, totalReturn: 0, dailyReturn: 0, imageUrl: '', badge: '', tagline: '' });
     } catch (err) {
       console.error(err);
       alert("Failed to save package");
@@ -308,7 +397,7 @@ const ManagePackages = () => {
           <button 
             onClick={() => {
               setEditingPkg(null);
-              setPkgForm({ name: '', description: '', investmentAmount: 0, durationDays: 0, totalReturn: 0, imageUrl: '', badge: '', tagline: '' });
+              setPkgForm({ name: '', description: '', investmentAmount: 0, durationDays: 0, totalReturn: 0, dailyReturn: 0, imageUrl: '', badge: '', tagline: '' });
               setShowModal(true);
             }}
             className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all shadow-lg shadow-green-200"
@@ -372,6 +461,15 @@ const ManagePackages = () => {
                     type="number" required
                     value={pkgForm.totalReturn}
                     onChange={e => setPkgForm({...pkgForm, totalReturn: Number(e.target.value)})}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-400 uppercase">Daily Return (₹)</label>
+                  <input 
+                    type="number" required
+                    value={pkgForm.dailyReturn}
+                    onChange={e => setPkgForm({...pkgForm, dailyReturn: Number(e.target.value)})}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
                   />
                 </div>
@@ -605,6 +703,566 @@ const ManageMessages = () => {
             </div>
           ))
         )}
+      </div>
+    </div>
+  );
+};
+
+const ManageFinance = () => {
+  const [pendingDeposits, setPendingDeposits] = useState<any[]>([]);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Listen for pending deposits
+    const qDep = query(collection(db, 'transactions'), where('type', '==', 'deposit'), where('status', '==', 'pending'));
+    const unsubDep = onSnapshot(qDep, (snap) => {
+      setPendingDeposits(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Listen for pending withdrawals
+    const qWith = query(collection(db, 'withdrawals'), where('status', '==', 'pending'));
+    const unsubWith = onSnapshot(qWith, (snap) => {
+      setPendingWithdrawals(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Listen for recent history (processed transactions)
+    const qHist = query(collection(db, 'transactions'), where('status', 'in', ['success', 'rejected']), orderBy('date', 'desc'), limit(20));
+    const unsubHist = onSnapshot(qHist, (snap) => {
+      setHistory(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    setLoading(false);
+    return () => {
+      unsubDep();
+      unsubWith();
+      unsubHist();
+    };
+  }, []);
+
+  const handleApproveDeposit = async (dep: any) => {
+    try {
+      // Update transaction status
+      await updateDoc(doc(db, 'transactions', dep.id), {
+        status: 'success'
+      });
+
+      // Update user balance
+      await updateDoc(doc(db, 'users', dep.userId), {
+        balance: increment(dep.amount)
+      });
+
+      alert("Deposit approved and balance updated!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to approve deposit");
+    }
+  };
+
+  const handleRejectDeposit = async (dep: any) => {
+    try {
+      await updateDoc(doc(db, 'transactions', dep.id), {
+        status: 'rejected',
+        description: 'Admin has rejected your deposit'
+      });
+      alert("Deposit rejected");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to reject deposit");
+    }
+  };
+
+  const handleApproveWithdrawal = async (withd: any) => {
+    try {
+      // Update withdrawal record
+      await updateDoc(doc(db, 'withdrawals', withd.id), {
+        status: 'success'
+      });
+
+      // Find and update the associated transaction
+      const qTrans = query(collection(db, 'transactions'), where('userId', '==', withd.userId), where('amount', '==', withd.amount), where('type', '==', 'withdrawal'), where('status', '==', 'pending'));
+      const snapTrans = await getDocs(qTrans);
+      for (const d of snapTrans.docs) {
+        await updateDoc(doc(db, 'transactions', d.id), {
+          status: 'success'
+        });
+      }
+
+      alert("Withdrawal marked as successful!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to approve withdrawal");
+    }
+  };
+
+  const handleRejectWithdrawal = async (withd: any) => {
+    try {
+      // Update withdrawal record
+      await updateDoc(doc(db, 'withdrawals', withd.id), {
+        status: 'rejected'
+      });
+
+      // Refund user balance
+      await updateDoc(doc(db, 'users', withd.userId), {
+        balance: increment(withd.amount)
+      });
+
+      // Update transaction
+      const qTrans = query(collection(db, 'transactions'), where('userId', '==', withd.userId), where('amount', '==', withd.amount), where('type', '==', 'withdrawal'), where('status', '==', 'pending'));
+      const snapTrans = await getDocs(qTrans);
+      for (const d of snapTrans.docs) {
+        await updateDoc(doc(db, 'transactions', d.id), {
+          status: 'rejected',
+          description: 'Admin has rejected your withdrawal (Refunded)'
+        });
+      }
+
+      alert("Withdrawal rejected and balance refunded!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to reject withdrawal");
+    }
+  };
+
+  return (
+    <div className="space-y-12">
+      {/* Pending Deposits */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-slate-900">Pending Deposits</h2>
+          <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold">{pendingDeposits.length} Pending</span>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-4">
+          {pendingDeposits.length === 0 ? (
+            <div className="bg-white p-10 rounded-3xl border border-slate-200 text-center text-slate-400">
+              No pending deposits found.
+            </div>
+          ) : (
+            pendingDeposits.map((dep) => (
+              <div key={dep.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-green-50 rounded-2xl">
+                    <TrendingUp className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-900">₹{dep.amount.toLocaleString()}</div>
+                    <div className="text-xs text-slate-400">UTR: {dep.utrNumber} • {new Date(dep.date).toLocaleString()}</div>
+                    <div className="text-xs font-bold text-blue-600 mt-1">User ID: {dep.userId}</div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button 
+                    onClick={() => handleApproveDeposit(dep)}
+                    className="px-6 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all"
+                  >
+                    Approve
+                  </button>
+                  <button 
+                    onClick={() => handleRejectDeposit(dep)}
+                    className="px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* Pending Withdrawals */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-slate-900">Withdrawal Requests</h2>
+          <span className="px-3 py-1 bg-orange-50 text-orange-600 rounded-full text-xs font-bold">{pendingWithdrawals.length} Pending</span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          {pendingWithdrawals.length === 0 ? (
+            <div className="bg-white p-10 rounded-3xl border border-slate-200 text-center text-slate-400">
+              No pending withdrawals found.
+            </div>
+          ) : (
+            pendingWithdrawals.map((withd) => (
+              <div key={withd.id} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-orange-50 rounded-2xl">
+                      <Wallet className="h-6 w-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-900 text-xl">₹{withd.amount.toLocaleString()}</div>
+                      <div className="text-sm text-slate-400">{withd.userName} ({withd.userEmail})</div>
+                      <div className="text-xs text-slate-400">{new Date(withd.createdAt).toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <button 
+                      onClick={() => handleApproveWithdrawal(withd)}
+                      className="px-6 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all"
+                    >
+                      Mark Paid
+                    </button>
+                    <button 
+                      onClick={() => handleRejectWithdrawal(withd)}
+                      className="px-6 py-2 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-all"
+                    >
+                      Reject & Refund
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Full Name</div>
+                    <div className="text-sm font-bold text-slate-700">{withd.bankDetails.fullName}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Bank Name</div>
+                    <div className="text-sm font-bold text-slate-700">{withd.bankDetails.bankName}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Account Number</div>
+                    <div className="text-sm font-bold text-slate-700">{withd.bankDetails.accountNumber}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">IFSC Code</div>
+                    <div className="text-sm font-bold text-slate-700">{withd.bankDetails.ifscCode}</div>
+                  </div>
+                  {withd.bankDetails.upiId && (
+                    <div className="md:col-span-2">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">UPI ID</div>
+                      <div className="text-sm font-bold text-slate-700">{withd.bankDetails.upiId}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* Finance History */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-slate-900">Finance History</h2>
+          <span className="text-xs text-slate-400">Showing last 20 processed transactions</span>
+        </div>
+
+        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">User</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Type</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Amount</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center text-slate-400">
+                      No transaction history found.
+                    </td>
+                  </tr>
+                ) : (
+                  history.map((item) => (
+                    <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-all">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-bold text-slate-900">{item.userName || 'User'}</div>
+                        <div className="text-[10px] text-slate-400">{item.userEmail || item.userId}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${
+                          item.type === 'deposit' ? 'bg-blue-50 text-blue-600' : 
+                          item.type === 'withdrawal' ? 'bg-orange-50 text-orange-600' : 
+                          'bg-green-50 text-green-600'
+                        }`}>
+                          {item.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-slate-900">₹{item.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${
+                          item.status === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-500 text-xs">
+                        {new Date(item.date).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-slate-400 text-xs max-w-[200px] truncate">
+                        {item.description}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+const ManageReferrals = () => {
+  const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, 'referrals'));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Referral));
+      // Sort in memory to avoid index requirements
+      data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setReferrals(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("Referrals onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'referrals');
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin text-green-600" /></div>;
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Referral Tracking</h2>
+          <p className="text-slate-500">Monitor user referrals and spin eligibility.</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Referrer ID</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Referred User</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Investment</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Spins (Used/Total)</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {referrals.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400 italic">No referrals found.</td>
+                </tr>
+              ) : (
+                referrals.map((ref) => (
+                  <tr key={ref.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-all">
+                    <td className="px-6 py-4">
+                      <div className="text-xs font-mono text-slate-500">{ref.referrerId}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-bold text-slate-900">{ref.referredName}</div>
+                      <div className="text-[10px] text-slate-400">{ref.referredEmail}</div>
+                    </td>
+                    <td className="px-6 py-4 font-bold text-green-600">₹{ref.investmentAmount.toLocaleString()}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${ref.spinsUsed >= ref.spinsEarned ? 'bg-slate-100 text-slate-400' : 'bg-green-50 text-green-600'}`}>
+                          {ref.spinsUsed} / {ref.spinsEarned}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-500 text-xs">
+                      {new Date(ref.createdAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ManageLottery = () => {
+  const [tickets, setTickets] = useState<LotteryTicket[]>([]);
+  const [stats, setStats] = useState<ImpactStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [winningNumber, setWinningNumber] = useState('');
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    const q = query(collection(db, 'tickets'));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as LotteryTicket));
+      // Sort in memory to avoid index requirements
+      data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setTickets(data.slice(0, 100));
+      setLoading(false);
+    }, (error) => {
+      console.error("Tickets onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'tickets');
+      setLoading(false);
+    });
+
+    const unsubStats = onSnapshot(doc(db, 'stats', 'global'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as ImpactStats;
+        setStats(data);
+        setWinningNumber(data.todayWinningTicket || '');
+      }
+    }, (error) => {
+      console.error("Stats onSnapshot error:", error);
+      handleFirestoreError(error, OperationType.GET, 'stats/global');
+    });
+
+    return () => {
+      unsubscribe();
+      unsubStats();
+    };
+  }, []);
+
+  const handleUpdateWinningNumber = async () => {
+    if (!winningNumber || winningNumber.length !== 7) {
+      alert("Please enter a valid 7-digit ticket number.");
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, 'stats', 'global'), {
+        todayWinningTicket: winningNumber
+      });
+      alert("Winning ticket number updated successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update winning number.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const generateRandomWinningNumber = () => {
+    const num = Math.floor(1000000 + Math.random() * 9000000).toString();
+    setWinningNumber(num);
+  };
+
+  if (loading) return <div className="flex justify-center p-10"><Loader2 className="h-8 w-8 animate-spin text-green-600" /></div>;
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Lottery Management</h2>
+          <p className="text-slate-500">Manage winning numbers and monitor ticket sales.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="md:col-span-1 space-y-6">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+            <h3 className="text-lg font-bold text-slate-900 mb-6">Set Winning Number</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Today's Winning Ticket</label>
+                <div className="flex space-x-2">
+                  <input 
+                    type="text" 
+                    value={winningNumber}
+                    onChange={(e) => setWinningNumber(e.target.value.replace(/\D/g, '').slice(0, 7))}
+                    placeholder="7-digit number"
+                    className="flex-grow px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <button 
+                    onClick={generateRandomWinningNumber}
+                    className="p-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all"
+                    title="Generate Random"
+                  >
+                    <Sparkles className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              <button 
+                onClick={handleUpdateWinningNumber}
+                disabled={updating}
+                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center space-x-2"
+              >
+                {updating ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+                <span>Update Number</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-blue-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-blue-900/20">
+            <div className="text-xs font-bold text-blue-200 uppercase tracking-widest mb-1">Total Tickets Sold</div>
+            <div className="text-4xl font-black mb-4">{tickets.length}</div>
+            <div className="text-xs font-bold text-blue-200 uppercase tracking-widest mb-1">Revenue Generated</div>
+            <div className="text-4xl font-black">₹{(tickets.length * 100).toLocaleString()}</div>
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900">Recent Ticket Purchases</h3>
+              <span className="text-xs text-slate-400">Last 100 tickets</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">User ID</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Ticket Number</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tickets.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-10 text-center text-slate-400 italic">No tickets sold yet.</td>
+                    </tr>
+                  ) : (
+                    tickets.map((ticket) => {
+                      const isWinner = ticket.ticketNumber === stats?.todayWinningTicket;
+                      return (
+                        <tr key={ticket.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-all">
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-mono text-slate-500">{ticket.userId}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-black text-slate-900 font-mono tracking-widest">{ticket.ticketNumber}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {isWinner ? (
+                              <span className="px-2 py-1 bg-green-100 text-green-600 text-[10px] font-black rounded-full uppercase flex items-center w-fit gap-1">
+                                <Sparkles className="h-3 w-3" /> Winner
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-full uppercase">No Match</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 text-xs">
+                            {new Date(ticket.date).toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

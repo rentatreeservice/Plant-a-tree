@@ -20,8 +20,8 @@ export const DEFAULT_PACKAGES: TreePackage[] = [
     tagline: "Entry level plan - Perfect for beginners",
     investmentAmount: 300,
     durationDays: 45,
-    totalReturn: 389.7,
-    dailyReturn: 8.66,
+    totalReturn: 389,
+    dailyReturn: 8.64,
     badge: "Perfect for beginners",
     imageUrl: TREE_IMAGES.marigold,
     description: "Entry level plan - Perfect for beginners"
@@ -44,8 +44,8 @@ export const DEFAULT_PACKAGES: TreePackage[] = [
     tagline: "Value option - Best value",
     investmentAmount: 800,
     durationDays: 60,
-    totalReturn: 1399.8,
-    dailyReturn: 23.33,
+    totalReturn: 1799.8,
+    dailyReturn: 30.00,
     badge: "Best value",
     imageUrl: TREE_IMAGES.tulsi,
     description: "Value option - Best value"
@@ -56,8 +56,8 @@ export const DEFAULT_PACKAGES: TreePackage[] = [
     tagline: "Premium investment - Premium investor",
     investmentAmount: 1500,
     durationDays: 90,
-    totalReturn: 3299.4,
-    dailyReturn: 36.66,
+    totalReturn: 2899.4,
+    dailyReturn: 32.21,
     badge: "Premium investor",
     imageUrl: TREE_IMAGES.mango,
     description: "Premium investment - Premium investor"

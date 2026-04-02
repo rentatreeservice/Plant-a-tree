@@ -7,8 +7,11 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
 import admin from 'firebase-admin';
+// import axios from 'axios';
+// import crypto from 'crypto';
 
 dotenv.config();
+// ... (rest of the imports and setup)
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,7 +32,6 @@ async function startServer() {
   const PORT = 3000;
 
 // ================== DB HELPERS ==================
-// (Keeping existing db.json helpers for compatibility with existing routes)
 function readDB() {
   try {
     const data = fs.readFileSync(DB_PATH, 'utf8');
@@ -56,6 +58,9 @@ function generateToken(user) {
 
 app.use(cors());
 app.use(express.json());
+
+// ================== PAYMENT ROUTES ==================
+// (Removed Instamojo integration)
 
 // Logging
 app.use((req, res, next) => {

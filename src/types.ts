@@ -6,6 +6,7 @@ export interface UserProfile {
   balance: number;
   totalInvested: number;
   totalReturns: number;
+  referredBy?: string | null;
   createdAt: string;
   bankDetails?: {
     fullName: string;
@@ -49,6 +50,27 @@ export interface ImpactStats {
   activeInvestors: number;
   totalInvested: number;
   returnsPaid: number;
+  todayWinningTicket?: string;
+}
+
+export interface Referral {
+  id: string;
+  referrerId: string;
+  referredId: string;
+  referredEmail: string;
+  referredName: string;
+  investmentAmount: number;
+  spinsEarned: number;
+  spinsUsed: number;
+  createdAt: string;
+}
+
+export interface Ticket {
+  id: string;
+  userId: string;
+  ticketNumber: string;
+  amount: number;
+  date: string;
 }
 
 export interface ContactMessage {

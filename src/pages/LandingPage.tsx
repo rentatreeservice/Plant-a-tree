@@ -66,6 +66,20 @@ const LandingPage: React.FC = () => {
         </div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          {/* Celebration Banner */}
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12 inline-block bg-white border-4 border-red-600 px-8 py-6 rounded-3xl shadow-2xl shadow-red-900/20"
+          >
+            <h2 className="text-xl md:text-3xl font-black text-red-600 mb-1 tracking-tight">
+              We are celebrating two years of success in planting real trees
+            </h2>
+            <p className="text-red-500 text-lg md:text-xl font-black">
+              Giving 250Rs Signup bonus as a free package For new Users
+            </p>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -225,7 +239,7 @@ const LandingPage: React.FC = () => {
                       </div>
 
                       <div className="bg-green-50/50 p-4 rounded-2xl text-center mb-8 border border-green-100">
-                        <div className="text-green-700 font-bold">Total Return: ₹{pkg.totalReturn} + Principal</div>
+                        <div className="text-green-700 font-bold">Total Return: ₹{pkg.totalReturn} (Principal inc.)</div>
                       </div>
 
                       <Link to="/login">
