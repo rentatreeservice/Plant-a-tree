@@ -38,7 +38,7 @@ const UPI_ID = "go.0919@ptyes";
 const PAYEE_NAME = "Plant a Tree";
 
 const Dashboard: React.FC = () => {
-  const { user, profile, logout, loading } = useAuth();
+  const { user, profile, logout, loading, error: authError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showDeposit, setShowDeposit] = useState(false);
@@ -67,21 +67,63 @@ const Dashboard: React.FC = () => {
   }, [profile]);
 
   useEffect(() => {
-    console.log('Dashboard state:', { loading, user: !!user, profile: !!profile });
+    console.log('Dashboard state:', { loading, user: !!user, profile: !!profile, authError });
     if (!loading && !user) {
       console.log('No user, navigating to login');
       navigate('/login');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, authError]);
 
-  if (loading || !user || !profile) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
           <p className="text-slate-500 text-sm animate-pulse">
-            {loading ? 'Loading your profile...' : !user ? 'Redirecting to login...' : 'Preparing your dashboard...'}
+            {loading ? 'Loading your profile...' : 'Redirecting to login...'}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authError || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-200 text-center">
+          <div className="p-4 bg-red-50 rounded-full w-fit mx-auto mb-6">
+            <AlertCircle className="h-10 w-10 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            {authError ? 'Connection Error' : 'Profile Not Found'}
+          </h2>
+          <p className="text-slate-500 mb-8 leading-relaxed">
+            {authError 
+              ? "We're having trouble connecting to our servers. Please check your internet connection and try again."
+              : "We couldn't find your account details in our database. This might happen if your registration was incomplete or your account was removed."}
+          </p>
+          <div className="flex flex-col gap-3">
+            {!authError && (
+              <button 
+                onClick={() => navigate('/signup')}
+                className="w-full py-4 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 transition-all shadow-lg shadow-green-100"
+              >
+                Complete Registration
+              </button>
+            )}
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all"
+            >
+              Retry Loading
+            </button>
+            <button 
+              onClick={() => logout()}
+              className="w-full py-4 text-slate-400 font-bold hover:text-red-500 transition-all"
+            >
+              Logout & Exit
+            </button>
+          </div>
         </div>
       </div>
     );

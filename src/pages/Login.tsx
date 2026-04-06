@@ -22,7 +22,19 @@ const Login: React.FC = () => {
       navigate('/dashboard');
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to login. Please check your credentials.');
+      let errorMessage = 'Failed to login. Please check your credentials.';
+      
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid email or password. Please try again.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'The email address is invalid.';
+      } else if (err.code === 'auth/user-disabled') {
+        errorMessage = 'This user account has been disabled.';
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed login attempts. Please try again later.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

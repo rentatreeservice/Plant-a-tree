@@ -66,15 +66,40 @@ const Signup: React.FC = () => {
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Signup error:', err);
-      let errorMessage = 'Failed to create account. Please try again.';
-      try {
-        // Check if it's our JSON error
-        const parsed = JSON.parse(err.message);
-        if (parsed.error) {
-          errorMessage = `Database Error: ${parsed.error}`;
+      
+      if (err.code === 'auth/email-already-in-use') {
+        // If email already exists, try to log them in instead
+        console.log('Email already in use, attempting login...');
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+          console.log('Login successful, redirecting to dashboard...');
+          navigate('/dashboard');
+          return;
+        } catch (loginErr: any) {
+          console.error('Login attempt after signup failure failed:', loginErr);
+          setError('This email is already registered. Please try logging in with your password.');
+          return;
         }
-      } catch {
-        errorMessage = err.message || errorMessage;
+      }
+
+      let errorMessage = 'Failed to create account. Please try again.';
+      
+      if (err.code === 'auth/invalid-email') {
+        errorMessage = 'The email address is invalid.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Email/password accounts are not enabled.';
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'The password is too weak. Please use at least 6 characters.';
+      } else {
+        try {
+          // Check if it's our JSON error from firestoreErrors
+          const parsed = JSON.parse(err.message);
+          if (parsed.error) {
+            errorMessage = `Database Error: ${parsed.error}`;
+          }
+        } catch {
+          errorMessage = err.message || errorMessage;
+        }
       }
       setError(errorMessage);
     } finally {

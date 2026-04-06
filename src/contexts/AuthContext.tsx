@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  error: string | null;
   logout: () => Promise<void>;
   isAuthReady: boolean;
 }
@@ -27,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
 
     setLoading(true);
+    setError(null);
     const profileRef = doc(db, 'users', user.uid);
     const userPath = `users/${user.uid}`;
     
@@ -75,12 +78,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } else {
-        setProfile(null);
+        console.warn('User profile document does not exist in Firestore. Auto-creating...');
+        // Auto-create missing profile to "repair" the account
+        const isAdmin = ['rentatree@proton.me'].includes(user.email?.toLowerCase() || '');
+        const newProfile: UserProfile = {
+          uid: user.uid,
+          email: user.email || '',
+          displayName: user.displayName || user.email?.split('@')[0] || 'User',
+          role: isAdmin ? 'admin' : 'user',
+          balance: 0,
+          totalInvested: 0,
+          totalReturns: 0,
+          referredBy: null,
+          createdAt: new Date().toISOString()
+        };
+        
+        try {
+          await setDoc(profileRef, newProfile);
+          setProfile(newProfile);
+          console.log('Profile auto-created for:', user.email);
+        } catch (err) {
+          console.error('Failed to auto-create profile:', err);
+          setProfile(null);
+        }
       }
       setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, userPath);
+    }, (err) => {
+      console.error('AuthContext profile listener error:', err);
       setLoading(false);
+      setError(err.message || 'Failed to load user profile');
+      try {
+        handleFirestoreError(err, OperationType.GET, userPath);
+      } catch (e) {
+        // handleFirestoreError throws, but we already set loading to false
+      }
     });
 
     return () => unsubscribe();
@@ -91,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, logout, isAuthReady }}>
+    <AuthContext.Provider value={{ user, profile, loading, error, logout, isAuthReady }}>
       {children}
     </AuthContext.Provider>
   );
