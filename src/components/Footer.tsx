@@ -2,7 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Twitter, Instagram, Linkedin, Mail, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
-const logo = "/logo.png";
+import { LOGO_URL } from '../constants/assets';
+const logo = LOGO_URL;
 
 const Footer: React.FC = () => {
   return (

@@ -23,7 +23,8 @@ import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firesto
 import { TREE_IMAGES } from '../assets/treeImages';
 import { TreePackage } from '../types';
 import { DEFAULT_PACKAGES } from '../constants/treeData';
-const logo = "/logo.png";
+import { LOGO_URL } from '../constants/assets';
+const logo = LOGO_URL;
 
 const LandingPage: React.FC = () => {
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });

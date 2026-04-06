@@ -5,7 +5,8 @@ import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { Leaf, Mail, Lock, User, ArrowRight, Loader2, Gift } from 'lucide-react';
 import { motion } from 'motion/react';
-const logo = "/logo.png";
+import { LOGO_URL } from '../constants/assets';
+const logo = LOGO_URL;
 
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
 

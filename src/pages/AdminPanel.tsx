@@ -32,7 +32,8 @@ import { TreePackage, UserProfile, ImpactStats, ContactMessage, Referral, Ticket
 import { motion, AnimatePresence } from 'motion/react';
 import { TREE_IMAGES } from '../assets/treeImages';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
-const logo = "/logo.png";
+import { LOGO_URL } from '../constants/assets';
+const logo = LOGO_URL;
 
 const AdminPanel: React.FC = () => {
   const { user, profile, logout, loading } = useAuth();

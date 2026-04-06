@@ -32,7 +32,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { TREE_IMAGES } from '../assets/treeImages';
 import { DEFAULT_PACKAGES } from '../constants/treeData';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
-const logo = "/logo.png";
+import { LOGO_URL } from '../constants/assets';
+const logo = LOGO_URL;
 
 const UPI_ID = "go.0919@ptyes";
 const PAYEE_NAME = "Plant a Tree";
