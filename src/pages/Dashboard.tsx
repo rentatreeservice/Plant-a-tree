@@ -32,7 +32,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { TREE_IMAGES } from '../assets/treeImages';
 import { DEFAULT_PACKAGES } from '../constants/treeData';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
-const logo = "https://raw.githubusercontent.com/rentatreeservice/Plant-a-tree/main/src/assets/logo.png";
+const logo = "/logo.png";
 
 const UPI_ID = "go.0919@ptyes";
 const PAYEE_NAME = "Plant a Tree";

@@ -32,7 +32,7 @@ import { TreePackage, UserProfile, ImpactStats, ContactMessage, Referral, Ticket
 import { motion, AnimatePresence } from 'motion/react';
 import { TREE_IMAGES } from '../assets/treeImages';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
-const logo = "https://raw.githubusercontent.com/rentatreeservice/Plant-a-tree/main/src/assets/logo.png";
+const logo = "/logo.png";
 
 const AdminPanel: React.FC = () => {
   const { user, profile, logout, loading } = useAuth();

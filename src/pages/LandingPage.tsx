@@ -23,7 +23,7 @@ import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firesto
 import { TREE_IMAGES } from '../assets/treeImages';
 import { TreePackage } from '../types';
 import { DEFAULT_PACKAGES } from '../constants/treeData';
-const logo = "https://raw.githubusercontent.com/rentatreeservice/Plant-a-tree/main/src/assets/logo.png";
+const logo = "/logo.png";
 
 const LandingPage: React.FC = () => {
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
