@@ -951,7 +951,7 @@ const Overview = () => {
 };
 
 const MyInvestments = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
 
