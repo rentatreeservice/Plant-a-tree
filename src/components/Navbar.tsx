@@ -4,7 +4,7 @@ import { Leaf, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
 import { LOGO_URL } from '../constants/assets';
-const logo = LOGO_URL;
+const logo = /logo.png;
 
 const Navbar: React.FC = () => {
   const location = useLocation();
@@ -21,7 +21,7 @@ const Navbar: React.FC = () => {
           <Link to="/" className="flex items-center space-x-2 group">
             <motion.img 
               src={logo} 
-              alt="Plant a Tree Logo" 
+              alt="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."; 
               className="h-12 w-12 object-contain"
               whileHover={{ rotate: 10, scale: 1.1 }}
             />
