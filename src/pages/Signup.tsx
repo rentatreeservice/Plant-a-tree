@@ -44,7 +44,7 @@ const Signup: React.FC = () => {
       // Create user profile in Firestore
       console.log('Creating Firestore document...');
       const userPath = `users/${user.uid}`;
-      const isAdmin = ['rentatreeservice@gmail.com'].includes(email.toLowerCase());
+      const isAdmin = ['rentatree@proton.me'].includes(email.toLowerCase());
       try {
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,

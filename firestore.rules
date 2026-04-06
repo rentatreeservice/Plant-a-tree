@@ -51,10 +51,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (('email' in request.auth.token && 
-          (request.auth.token.email.lower() == "jainaman.aj79@gmail.com")) ||
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+        ('email' in request.auth.token && 
+         (request.auth.token.email.lower() == "rentatree@proton.me"));
     }
 
     function isValidDateString(dateStr) {
@@ -67,13 +65,17 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
+      let isAdminEmail = data.email.lower() == "rentatree@proton.me";
+      let expectedRole = isAdminEmail ? 'admin' : 'user';
+      
       return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'balance', 'totalInvested', 'totalReturns', 'referredBy', 'bankDetails', 'createdAt']) &&
              data.uid == request.auth.uid &&
              data.email is string &&
-             data.role == 'user' &&
+             data.role == expectedRole &&
              data.balance == 0 &&
              data.totalInvested == 0 &&
-             data.totalReturns == 0;
+             data.totalReturns == 0 &&
+             isValidDateString(data.createdAt);
     }
 
     function isValidPackage(data) {
@@ -138,7 +140,7 @@ service cloud.firestore {
     // Rules
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isAuthenticated() && isOwner(userId) && request.resource.data.role == 'user';
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
       allow update, delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
     }
 

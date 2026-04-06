@@ -34,9 +34,7 @@ import { DEFAULT_PACKAGES } from '../constants/treeData';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrors';
 const logo = "https://raw.githubusercontent.com/rentatreeservice/Plant-a-tree/main/src/assets/logo.png";
 
-const UPI_ID = "rentatreeservice@gmail.com";
-// However, for the QR code to work, we need a valid UPI ID. 
-// The user said "I dont want you to show my upi id" - I can hide the text but the QR must contain it.
+const UPI_ID = "go.0919@ptyes";
 const PAYEE_NAME = "Plant a Tree";
 
 const Dashboard: React.FC = () => {
@@ -312,20 +310,38 @@ const Dashboard: React.FC = () => {
                   <div className="text-center space-y-2">
                     <p className="text-sm font-bold text-slate-400 uppercase">Scan to Pay</p>
                     <p className="text-3xl font-black text-slate-900">₹{Number(depositAmount).toLocaleString()}</p>
-                    <p className="text-xs text-slate-500">Payee: {PAYEE_NAME}</p>
+                    <div className="flex items-center justify-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                      <p className="text-xs font-mono text-slate-600">{UPI_ID}</p>
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(UPI_ID);
+                          // Optional: add a toast or temporary check icon
+                        }}
+                        className="text-slate-400 hover:text-green-600 transition-colors"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400">Payee: {PAYEE_NAME}</p>
                   </div>
 
                   <div className="w-full space-y-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-400 uppercase">Enter 12-digit UTR/Transaction ID</label>
+                      <div className="flex justify-between items-center px-1">
+                        <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">Transaction UTR Number</label>
+                        <span className="text-[10px] font-bold text-red-500 uppercase tracking-tighter">* Required for confirmation</span>
+                      </div>
                       <input 
                         type="text" 
                         maxLength={12}
                         value={utrNumber}
                         onChange={e => setUtrNumber(e.target.value.replace(/\D/g, ''))}
-                        placeholder="0000 0000 0000"
+                        placeholder="12-digit UTR Number"
                         className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none font-mono text-center text-xl tracking-widest"
                       />
+                      <p className="text-[10px] text-slate-400 text-center px-4">
+                        Please enter the 12-digit UTR number from your payment app to confirm your deposit.
+                      </p>
                     </div>
 
                     <div className="flex space-x-4">

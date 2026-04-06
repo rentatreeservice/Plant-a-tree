@@ -57,13 +57,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = docSnap.data() as UserProfile;
         setProfile(data);
         
-        const isAdminEmail = ['rentatreeservice@gmail.com'].includes(user.email?.toLowerCase() || '');
+        const isAdminEmail = ['rentatree@proton.me'].includes(user.email?.toLowerCase() || '');
         if (isAdminEmail && data.role !== 'admin') {
           try {
             await updateDoc(profileRef, { role: 'admin' });
             console.log('Admin role synchronized for:', user.email);
           } catch (err) {
             console.error('Failed to synchronize admin role:', err);
+          }
+        } else if (!isAdminEmail && data.role === 'admin') {
+          // Demote if they are no longer in the admin list
+          try {
+            await updateDoc(profileRef, { role: 'user' });
+            console.log('User demoted from admin:', user.email);
+          } catch (err) {
+            console.error('Failed to demote user:', err);
           }
         }
       } else {
